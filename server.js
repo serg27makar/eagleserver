@@ -18,8 +18,8 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const DATA_FILE = './access/data.json';
 
 const readData = () => {
-    const data = fs.readFileSync(DATA_FILE);
-    return JSON.parse(data);
+    const data = fs.readFileSync(DATA_FILE, 'utf-8').trim();
+    return data ? JSON.parse(data) : {};
 };
 
 const writeData = (data) => {
@@ -27,24 +27,26 @@ const writeData = (data) => {
 };
 
 app.post('/register', (req, res) => {
-    const { firstName, email, password, lastName } = req.body;
+    const { userName, email, phone, password } = req.body;
 
-    if (!firstName || !email || !password || !lastName) {
+    if (!userName || !email || !password || !phone) {
         return res.status(400).json({ message: 'Все поля обязательны' });
     }
 
     const data = readData();
-    const existingUser = data.users.find(user => user.email === email);
+    const existingUser = (data && data.user) ? data.users.find(user => user.email === email) : null;
 
     if (existingUser) {
         return res.status(400).json({ message: 'Пользователь с таким email уже существует' });
     }
 
-    const newUser = { firstName, email, password, lastName };
-    data.users.push(newUser);
+    const newUser = { userName, email, password, phone };
+    const users = [];
+    users.push(newUser);
+    data.users = users
     writeData(data);
 
-    res.status(201).json({ message: 'Пользователь зарегистрирован' });
+    res.status(201).json({ message: 'Пользователь зарегистрирован', user: newUser });
 });
 
 app.post('/login', (req, res) => {
@@ -55,7 +57,7 @@ app.post('/login', (req, res) => {
     }
 
     const data = readData();
-    const user = data.users.find(user => user.email === email && user.password === password);
+    const user = data && data.users && data.users.find(user => user.email === email && user.password === password);
 
     if (!user) {
         return res.status(401).json({ message: 'Неверные email или пароль' });
